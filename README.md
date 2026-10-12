@@ -8,6 +8,7 @@ A combat racer where you drive an auto-rickshaw through Mumbai, Hyderabad, Delhi
 
 ```bash
 brew tap shankyty/rickshaw-rider https://github.com/shankyty/rickshaw-rider
+brew trust shankyty/rickshaw-rider
 brew install --cask rickshaw-rider
 ```
 
