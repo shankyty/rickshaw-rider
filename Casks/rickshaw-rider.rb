@@ -1,6 +1,6 @@
 cask "rickshaw-rider" do
-  version "1.3.1"
-  sha256 "906dc5d94027615c0d1c7244d85c2c3e6f47b4d65b15f5e3dedc9cdcbc507f62"
+  version "1.4.0"
+  sha256 "2565fc7b28b3ded059ef29098b643d03c6e32c2be7815153dd6904c937a5e484"
 
   url "https://github.com/shankyty/rickshaw-rider/releases/download/v#{version}/RickshawRider.dmg"
   name "Rickshaw Rider"
