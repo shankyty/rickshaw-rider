@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rickshaw Rider">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Rickshaw Rider</title>
+<meta name="description" content="A combat racer in an auto-rickshaw! Race through Mumbai, Hyderabad, Delhi and Chennai, swing your lathi at rival autos and dodge the cows.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Rickshaw Rider 🛺">
+<meta property="og:description" content="A combat racer in an auto-rickshaw! Race through Mumbai, Hyderabad, Delhi and Chennai, swing your lathi at rival autos and dodge the cows. Play free in your browser.">
+<meta property="og:url" content="https://shankyty.github.io/rickshaw-rider/">
+<meta property="og:image" content="https://shankyty.github.io/rickshaw-rider/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#120b1c">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #120b1c; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+  /* a game, not a page: no double-tap or pinch zoom, no text selection or tap callouts */
+  html, body, canvas { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+  body { display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; }
+  #wrap { position: relative; }
+  canvas { display: block; image-rendering: auto; border-radius: 6px; }
+  #game { position: relative; box-shadow: 0 0 60px rgba(255, 150, 60, .25); }
+  #bg, #gl { position: absolute; left: 0; top: 0; }
+  #touch { position: absolute; inset: 0; display: none; pointer-events: none; }
+  #touch.on { display: block; }
+  .tbtn {
+    position: absolute; pointer-events: auto; width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(0, 0, 0, .35); border: 2px solid rgba(255, 255, 255, .5); color: #fff;
+    font: 700 13px system-ui; display: flex; align-items: center; justify-content: center;
+    user-select: none; -webkit-user-select: none; touch-action: none;
+  }
+  .tbtn.down { background: rgba(255, 200, 0, .5); }
+  .tbtn.small { width: 44px; height: 44px; font-size: 16px; }
+  .tbtn.big { width: 84px; height: 84px; font-size: 16px; }
+  #touch .race, #touch.racing .menu { display: none; }
+  #touch.racing .race { display: flex; }
+  #homescreen { position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    padding: 24px; background: var(--bg); color: #fff; text-align: center; font: 16px/1.4 system-ui; }
+  #homescreen.on { display: flex; }
+  #homescreen img { width: 96px; height: 96px; border-radius: 22px; }
+  #homescreen h1 { margin: 0; font: 24px 'Bungee', system-ui; color: #ffd21f; }
+  #homescreen ol { margin: 0; padding-left: 1.4em; text-align: left; max-width: 320px; }
+  /* landscape phones: pin the buttons to the screen edges (into the side strips where there's room),
+     inside the notch-safe area, so they don't cover the game's HUD */
+  @media (orientation: landscape) and (pointer: coarse) {
+    #touch.on { position: fixed; inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+    .tbtn { width: 60px; height: 60px; background: rgba(0, 0, 0, .28); }
+    .tbtn.big { width: 80px; height: 80px; }
+  }
+  /* phones held upright (or with rotation lock on): the game still plays sideways, turned 90° to fill the screen;
+     fit() in game/main.js sizes #wrap to the landscape box */
+  @media (orientation: portrait) and (pointer: coarse) {
+    #wrap { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(90deg); display: flex; align-items: center; justify-content: center; }
+    /* the screen's notch-safe edges, turned with the game: its left edge is the top of the screen */
+    #touch.on { position: absolute; inset: env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) env(safe-area-inset-top); }
+    .tbtn { width: 60px; height: 60px; background: rgba(0, 0, 0, .28); }
+    .tbtn.big { width: 80px; height: 80px; }
+  }
+</style>
+</head>
+<body>
+<!-- iPhone/iPad browsers can't go full screen, so there the game only plays from the home screen icon -->
+<div id="homescreen">
+  <img src="apple-touch-icon.png" alt="">
+  <h1>Rickshaw Rider</h1>
+  <p>Play it full screen from your home screen:</p>
+  <ol><li>Tap <b>Share</b> (the square with an arrow) in the browser bar</li><li>Tap <b>Add to Home Screen</b></li><li>Open <b>Rickshaw Rider</b> from your home screen</li></ol>
+</div>
+<script>
+  // (same test as isIOS in game/audio.js); navigator.standalone is true when opened from the home screen icon
+  if ((/iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)) && !navigator.standalone) {
+    document.getElementById('homescreen').classList.add('on');
+    addEventListener('keydown', e => e.stopImmediatePropagation(), { capture: true }); // an iPad keyboard can't start a race behind it
+  }
+</script>
+<div id="wrap">
+  <canvas id="bg" width="960" height="540"></canvas>
+  <canvas id="gl" width="960" height="540"></canvas>
+  <canvas id="game" width="960" height="540"></canvas>
+  <div id="touch">
+    <div class="tbtn big" data-key="T_left"  style="left:12px;bottom:10px">◀</div>
+    <div class="tbtn big" data-key="T_right" style="left:104px;bottom:10px">▶</div>
+    <div class="tbtn big race" data-key="T_hit"   style="right:12px;bottom:10px">HIT</div>
+    <div class="tbtn race" data-key="T_down"  style="right:104px;bottom:10px">BRAKE</div>
+    <div class="tbtn race" data-key="T_horn"  style="right:28px;bottom:104px">HORN</div>
+    <div class="tbtn big menu" data-key="Enter" style="right:12px;bottom:10px">OK</div>
+    <div class="tbtn small" data-key="Escape" style="right:12px;top:12px" title="Pause">❚❚</div>
+    <div class="tbtn small" data-key="KeyV" style="right:64px;top:12px" title="Sound">🔊</div>
+    <div class="tbtn small menu" id="tbtn3d" data-key="KeyG" style="right:116px;top:12px;font-size:13px" title="Switch 2D / 3D">3D</div>
+  </div>
+</div>
+<script src="app-1.930eba8a.js"></script>
+<script src="lib/three.min.js"></script>
+<script>
+  // Blender vehicle models are only for the 3D game, so the 2D game skips the download (same choice as WANT_3D in game/analytics.js)
+  let want3D = true;
+  try { const v = localStorage.getItem('rrr_3d'); if (v !== null) want3D = JSON.parse(v); } catch (e) { /* storage blocked: keep the default */ }
+  if (/[?&]3d\b/.test(location.search)) want3D = true;
+  if (/[?&]2d\b/.test(location.search)) want3D = false;
+  if (want3D)
+    for (const m of ['auto', 'amby']) document.write('<script src="models/' + m + '.js"><\/script>');
+</script>
+<script src="app-2.6f6cd8fe.js"></script>
+</body>
+</html>
